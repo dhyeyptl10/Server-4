@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const app = express();
+
+// Set the port once at the top
 const PORT = process.env.PORT || 3000;
 
 // Middleware
@@ -69,7 +71,6 @@ app.get('/students/branch/:branchName', (req, res) => {
   const branchName = req.params.branchName.toUpperCase();
   const filteredStudents = students.filter(s => s.branch.toUpperCase() === branchName);
 
-  
   if (filteredStudents.length === 0) {
     return res.status(404).json({ message: `No students found in branch: ${branchName}` });
   }
@@ -78,5 +79,5 @@ app.get('/students/branch/:branchName', (req, res) => {
 
 // Start Server
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+    console.log(`Server is running on port ${PORT}`);
 });
