@@ -1,84 +1,122 @@
 const express = require('express');
 const cors = require('cors');
-const app = express();
 
-// Set the port ONCE - Render will provide a port via process.env.PORT
+const app = express();
+// Use process.env.PORT for Render deployment, fallback to 3000 locally
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// Middleware (Order is strictly maintained)
 app.use(cors());
 app.use(express.json());
 
-// In-Memory JSON Database
-const students = [
-  { id: 1, name: "Aarav Sharma", branch: "CSE", semester: 8, cgpa: 9.3 },
-  { id: 2, name: "Ishita Verma", branch: "IT", semester: 7, cgpa: 8.9 },
-  { id: 3, name: "Rohan Kulkarni", branch: "ECE", semester: 6, cgpa: 8.4 },
-  { id: 4, name: "Meera Iyer", branch: "CSE", semester: 8, cgpa: 9.1 },
-  { id: 5, name: "Kunal Deshmukh", branch: "IT", semester: 5, cgpa: 7.8 },
-  { id: 6, name: "Ananya Reddy", branch: "CSE", semester: 6, cgpa: 8.7 },
-  { id: 7, name: "Vikram Patil", branch: "ECE", semester: 7, cgpa: 8.2 },
-  { id: 8, name: "Priyanka Nair", branch: "AI", semester: 4, cgpa: 8.8 },
-  { id: 9, name: "Harsh Mehta", branch: "Data Science", semester: 5, cgpa: 8.0 },
-  { id: 10, name: "Neha Gupta", branch: "CSE", semester: 6, cgpa: 7.9 }
+// In-Memory JSON Array
+let products = [
+  { id: 1, name: "Wireless Mouse", category: "Electronics", price: 799, stock: 25, rating: 4.3 },
+  { id: 2, name: "Running Shoes", category: "Footwear", price: 2499, stock: 40, rating: 4.5 },
+  { id: 3, name: "Laptop Stand", category: "Accessories", price: 999, stock: 30, rating: 4.2 },
+  { id: 4, name: "Smart Watch", category: "Electronics", price: 4999, stock: 12, rating: 4.4 },
+  { id: 5, name: "Backpack", category: "Fashion", price: 1599, stock: 50, rating: 4.1 }
 ];
 
-// --- STATIC ROUTES ---
+// ==========================================
+// GET Routes (3 Required)
+// ==========================================
 
-// 1. GET /students - Return all students
-app.get('/students', (req, res) => {
-  res.status(200).json(students);
+// 1. GET all products
+app.get('/products', (req, res) => {
+  res.status(200).json(products);
 });
 
-// 2. GET /students/topper - Return student with highest CGPA
-app.get('/students/topper', (req, res) => {
-  if (students.length === 0) {
-    return res.status(404).json({ message: "No students found" });
-  }
-  const topper = students.reduce((prev, current) => (prev.cgpa > current.cgpa) ? prev : current);
-  res.status(200).json(topper);
-});
-
-// 3. GET /students/average - Return average CGPA
-app.get('/students/average', (req, res) => {
-  if (students.length === 0) return res.status(200).json({ averageCGPA: 0 });
+// 2. GET product by ID
+app.get('/products/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const product = products.find(p => p.id === id);
   
-  const sum = students.reduce((acc, curr) => acc + curr.cgpa, 0);
-  const average = sum / students.length;
-  res.status(200).json({ averageCGPA: Number(average.toFixed(2)) });
-});
-
-// 4. GET /students/count - Return total number of students
-app.get('/students/count', (req, res) => {
-  res.status(200).json({ totalStudents: students.length });
-});
-
-// --- DYNAMIC ROUTES ---
-
-// 5. GET /students/:id - Return student by ID
-app.get('/students/:id', (req, res) => {
-  const studentId = parseInt(req.params.id);
-  const student = students.find(s => s.id === studentId);
-
-  if (!student) {
-    return res.status(404).json({ message: `Student with ID ${studentId} not found` });
+  if (!product) {
+    return res.status(404).json({ message: "Product not found" });
   }
-  res.status(200).json(student);
+  res.status(200).json(product);
 });
 
-// 6. GET /students/branch/:branchName - Return students by branch
-app.get('/students/branch/:branchName', (req, res) => {
-  const branchName = req.params.branchName.toUpperCase();
-  const filteredStudents = students.filter(s => s.branch.toUpperCase() === branchName);
+// 3. GET products by category
+app.get('/products/category/:categoryName', (req, res) => {
+  const category = req.params.categoryName.toLowerCase();
+  const filteredProducts = products.filter(p => p.category.toLowerCase() === category);
+  
+  // Returns empty array if none found, as requested
+  res.status(200).json(filteredProducts); 
+});
 
-  if (filteredStudents.length === 0) {
-    // Note: 404 selected because the requested resource (branch list) does not exist
-    return res.status(404).json({ message: `No students found in branch: ${branchName}` });
+// ==========================================
+// POST Route (1 Required)
+// ==========================================
+
+// 4. POST a new product
+app.post('/products', (req, res) => {
+  const { name, category, price, stock, rating } = req.body;
+  
+  // Auto-generate ID based on the highest existing ID
+  const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
+  
+  const newProduct = { id: newId, name, category, price, stock, rating };
+  products.push(newProduct);
+  
+  res.status(201).json(newProduct);
+});
+
+// ==========================================
+// PUT Routes (3 Required)
+// ==========================================
+
+// 5. PUT replace entire product
+app.put('/products/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const index = products.findIndex(p => p.id === id);
+  
+  if (index === -1) {
+    return res.status(404).json({ message: "Product not found" });
   }
-  res.status(200).json(filteredStudents);
+
+  const { name, category, price, stock, rating } = req.body;
+  // Replace all fields except the ID
+  products[index] = { id, name, category, price, stock, rating };
+  
+  res.status(200).json(products[index]);
 });
 
-// Start Server using the single PORT variable
+// 6. PUT update only stock
+app.put('/products/:id/stock', (req, res) => {
+  const id = parseInt(req.params.id);
+  const index = products.findIndex(p => p.id === id);
+  
+  if (index === -1) {
+    return res.status(404).json({ message: "Product not found" });
+  }
+
+  if (req.body.stock !== undefined) {
+    products[index].stock = req.body.stock;
+  }
+  
+  res.status(200).json(products[index]);
+});
+
+// 7. PUT update only price
+app.put('/products/:id/price', (req, res) => {
+  const id = parseInt(req.params.id);
+  const index = products.findIndex(p => p.id === id);
+  
+  if (index === -1) {
+    return res.status(404).json({ message: "Product not found" });
+  }
+
+  if (req.body.price !== undefined) {
+    products[index].price = req.body.price;
+  }
+  
+  res.status(200).json(products[index]);
+});
+
+// Start the server
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
